@@ -1,0 +1,324 @@
+{
+    "terraform": {
+        "required_providers": [
+            {
+                "huaweicloud": {
+                    "source": "huawei.com/provider/huaweicloud",
+                    "version": ">=1.42.0"
+                }
+            }
+        ]
+    },
+    "provider": {
+        "huaweicloud": {
+            "cloud": "myhuaweicloud.com",
+            "endpoints": {
+                "iam": "iam.ap-southeast-3.myhuaweicloud.com",
+                "dns": "dns.ap-southeast-3.myhuaweicloud.com",
+                "bss": "bss.myhuaweicloud.com"
+            },
+            "insecure": true,
+            "region": "ap-southeast-3",
+            "auth_url": "https://iam.ap-southeast-3.myhuaweicloud.com/v3"
+        }
+    },
+    "variable": {
+        "vpc_name": {
+            "default": "deploy-a-highly-available-mongodb_demo",
+            "description": "Name of a new VPC that this template will create. The name can include 1 to 52 characters, and can contain only digits, letters, underscores (_), hyphens (-), and periods (.). No duplicate names are allowed. The default value is deploy-a-highly-available-mongodb_demo.",
+            "type": "string",
+            "nullable": "false",
+            "validation": {
+                "condition": "${length(regexall(\"^[\\\\w\\\\.-]{1,52}$\",var.vpc_name))>0}",
+                "error_message": "Invalid input. Please re-enter."
+            }
+        },
+        "secgroup_name": {
+            "default": "deploy-a-highly-available-mongodb_demo",
+            "description": "Name of a new security group that this template will create. The name can include 1 to 64 characters and can contain only digits, letters, underscores (_), hyphens, and periods (.). The default value is deploy-a-highly-available-mongodb_demo. For details about how to configure security group rules, see the Deployment Guide.",
+            "type": "string",
+            "nullable": "false",
+            "validation": {
+                "condition": "${length(regexall(\"^[\\\\w\\\\.-]{1,64}$\",var.secgroup_name))>0}",
+                "error_message": "Invalid input. Please re-enter."
+            }
+        },
+        "ecs_name": {
+            "default": "deploy-a-highly-available-mongodb_demo",
+            "description": "ECS name. The name can include 1 to 60 characters and can contain only letters, digits, underscores (_), hyphens (-), and periods (.). The default value is deploy-a-highly-available-mongodb_demo. No duplicate names are allowed.",
+            "type": "string",
+            "nullable": "false",
+            "validation": {
+                "condition": "${length(regexall(\"^[\\\\w\\\\.-]{1,60}$\",var.ecs_name))>0}",
+                "error_message": "Invalid input. Please re-enter."
+            }
+        },
+        "ecs_flavor": {
+            "default": "s6.medium.2",
+            "description": "ECS flavor. The default value is s6.medium.2 (s6|1vCPUs|2GiB). Configure other specifications by referring to the Deployment Guide.",
+            "type": "string",
+            "nullable": "false",
+            "validation": {
+                "condition": "${length(regexall(\"^([a-z][a-z0-9]{0,3}\\\\.)(small\\\\.|medium\\\\.|(x||[1-9][0-9]{0,1}x)large\\\\.)[1-9][0-9]{0,1}$\",var.ecs_flavor))>0}",
+                "error_message": "Invalid input. Please re-enter."
+            }
+        },
+        "ecs_password": {
+            "default": "",
+            "description": "ECS initial password. The password can include 8 to 26 characters and must contain three of the following: uppercase letters, lowercase letters, digits, and special characters (permitted characters: !@$%^-_=+[{}]:,./?). The password cannot contain the username or the username spelled backwards. The administrator account is root. After an ECS is created, you can change its password on the ECS console by referring to the Deployment Guide.",
+            "type": "string",
+            "nullable": "false",
+            "sensitive": "true"
+        },
+        "system_disk_size": {
+            "default": 40,
+            "description": "ECS system disk size, in GiB. The value ranges from 40 to 1024. The system disk size can only be increased.",
+            "type": "number",
+            "nullable": "false",
+            "validation": {
+                "condition": "${length(regexall(\"^([4-9]\\\\d|[1-9]\\\\d{2}|10[0-1][0-9]|102[0-4])$\",var.system_disk_size))>0}",
+                "error_message": "Invalid input, please re-enter."
+            }
+        },
+        "data_disk_size": {
+            "default": 100,
+            "description": "ECS data disk size, in GiB. The value ranges from 10 to 32768.",
+            "type": "number",
+            "nullable": "false",
+            "validation": {
+                "condition": "${length(regexall(\"^([1-9]\\\\d{1,3}|[1-2]\\\\d{4}|3[0-1]\\\\d{3}|32[0-6]\\\\d{2}|327[0-5]\\\\d|3276[0-8])$\",var.data_disk_size))>0}",
+                "error_message": "Invalid input, please re-enter."
+            }
+        },
+        "charging_mode": {
+            "default": "postPaid",
+            "description": "Billing mode. By default, fees are automatically deducted. The value can be prePaid (yearly/monthly) or postPaid (pay-per-use).",
+            "type": "string",
+            "nullable": "false",
+            "validation": {
+                "condition": "${contains([\"postPaid\",\"prePaid\"], var.charging_mode)}",
+                "error_message": "Invalid input, please re-enter."
+            }
+        },
+        "charging_unit": {
+            "default": "month",
+            "description": "Billing unit. The value can be month or year. The default value is month. This parameter is mandatory when charging_mode is set to prePaid",
+            "type": "string",
+            "nullable": "false",
+            "validation": {
+                "condition": "${contains([\"month\",\"year\"], var.charging_unit)}",
+                "error_message": "Invalid input, please re-enter."
+            }
+        },
+        "charging_period": {
+            "default": 1,
+            "description": "Yearly/Monthly duration. Value ranges when charging_unit is set to year: 1 to 3. Value range when the parameter is set to month: 1 to 9. This parameter is mandatory when charging_mode is set to prePaid. The default value is 1.",
+            "type": "number",
+            "nullable": "false",
+            "validation": {
+                "condition": "${length(regexall(\"^[1-9]$\",var.charging_period))>0}",
+                "error_message": "Invalid input, please re-enter."
+            }
+        },
+        "eip_bandwidth_size": {
+            "default": 5,
+            "description": "EIP bandwidth size in Mbit/s. Value range: 1 to 2000. The default value is 5. Billing is based on bandwidth in this template.",
+            "type": "number",
+            "nullable": "false",
+            "validation": {
+                "condition": "${length(regexall(\"^(1[0-9]{3}|[1-9][0-9]{0,2}|2000)$\",var.eip_bandwidth_size))>0}",
+                "error_message": "Invalid input. Please re-enter."
+            }
+        },
+        "mongodb_password": {
+            "default": "",
+            "description": "MongoDB database root password. After a MongoDB database is created, you can change this password by referring to the Deployment Guide if necessary. The password can include 4 to 12 characters and must contain three of the following: uppercase letters, lowercase letters, digits, and special characters (permitted characters: @%^-=).",
+            "type": "string",
+            "nullable": "false",
+            "sensitive": "true"
+        }
+    },
+    "data": {
+        "huaweicloud_availability_zones": {
+            "availability_zones": {}
+        },
+        "huaweicloud_images_image": {
+            "CentOS": {
+                "most_recent": true,
+                "name": "CentOS 7.6 64bit",
+                "visibility": "public"
+            }
+        }
+    },
+    "resource": {
+        "huaweicloud_vpc": {
+            "vpc": {
+                "cidr": "172.16.0.0/24",
+                "name": "${var.vpc_name}"
+            }
+        },
+        "huaweicloud_vpc_subnet": {
+            "subnet": {
+                "availability_zone": "${data.huaweicloud_availability_zones.availability_zones.names[0]}",
+                "cidr": "${huaweicloud_vpc.vpc.cidr}",
+                "gateway_ip": "172.16.0.1",
+                "name": "${var.vpc_name}_subnet",
+                "vpc_id": "${huaweicloud_vpc.vpc.id}"
+            }
+        },
+        "huaweicloud_networking_secgroup": {
+            "secgroup": {
+                "name": "${var.secgroup_name}"
+            }
+        },
+        "huaweicloud_networking_secgroup_rule": {
+            "allow_ping": {
+                "description": "You can ping the IP address of the test ECS to check its connectivity.",
+                "direction": "ingress",
+                "ethertype": "IPv4",
+                "protocol": "icmp",
+                "remote_ip_prefix": "0.0.0.0/0",
+                "security_group_id": "${huaweicloud_networking_secgroup.secgroup.id}"
+            },
+            "allow_ssh_linux": {
+                "description": "The Linux ECS can be connected to over SSH.",
+                "direction": "ingress",
+                "ethertype": "IPv4",
+                "ports": 22,
+                "protocol": "tcp",
+                "remote_ip_prefix": "172.16.0.0/24",
+                "security_group_id": "${huaweicloud_networking_secgroup.secgroup.id}"
+            },
+            "allow_all": {
+                "description": "Network port of the MongoDB database",
+                "direction": "ingress",
+                "ethertype": "IPv4",
+                "ports": 27017,
+                "protocol": "tcp",
+                "remote_ip_prefix": "0.0.0.0/0",
+                "security_group_id": "${huaweicloud_networking_secgroup.secgroup.id}"
+            }
+        },
+        "huaweicloud_compute_instance": {
+            "secondary01": {
+                "name": "${var.ecs_name}_secondary01",
+                "image_id": "${data.huaweicloud_images_image.CentOS.id}",
+                "flavor_id": "${var.ecs_flavor}",
+                "security_group_ids": [
+                    "${huaweicloud_networking_secgroup.secgroup.id}"
+                ],
+                "availability_zone": "${data.huaweicloud_availability_zones.availability_zones.names[0]}",
+                "system_disk_type": "SAS",
+                "system_disk_size": "${var.system_disk_size}",
+                "charging_mode": "${var.charging_mode}",
+                "period_unit": "${var.charging_unit}",
+                "period": "${var.charging_period}",
+                "admin_pass": "${var.ecs_password}",
+                "data_disks": {
+                    "size": "${var.data_disk_size}",
+                    "type": "GPSSD"
+                },
+                "delete_disks_on_termination": true,
+                "network": {
+                    "fixed_ip_v4": "172.16.0.10",
+                    "uuid": "${huaweicloud_vpc_subnet.subnet.id}"
+                },
+                "user_data": "#!/bin/bash\necho 'root:${var.ecs_password}'|chpasswd\nwget -P /tmp/ https://documentation-samples-4.obs.ap-southeast-3.myhuaweicloud.com/solution-as-code-moudle/deploy-a-highly-available-mongodb/userdata/install_secondary_db01.sh\nchmod 744 /tmp/install_secondary_db01.sh\nsh /tmp/install_secondary_db01.sh ${var.mongodb_password}\nrm -rf /tmp/install_secondary_db01.sh"
+            },
+            "secondary02": {
+                "depends_on": [
+                    "huaweicloud_compute_instance.secondary01"
+                ],
+                "name": "${var.ecs_name}_secondary02",
+                "image_id": "${data.huaweicloud_images_image.CentOS.id}",
+                "flavor_id": "${var.ecs_flavor}",
+                "security_group_ids": [
+                    "${huaweicloud_networking_secgroup.secgroup.id}"
+                ],
+                "availability_zone": "${data.huaweicloud_availability_zones.availability_zones.names[1]}",
+                "system_disk_type": "SAS",
+                "system_disk_size": "${var.system_disk_size}",
+                "charging_mode": "${var.charging_mode}",
+                "period_unit": "${var.charging_unit}",
+                "period": "${var.charging_period}",
+                "admin_pass": "${var.ecs_password}",
+                "data_disks": {
+                    "size": "${var.data_disk_size}",
+                    "type": "GPSSD"
+                },
+                "delete_disks_on_termination": true,
+                "network": {
+                    "fixed_ip_v4": "172.16.0.11",
+                    "uuid": "${huaweicloud_vpc_subnet.subnet.id}"
+                },
+                "user_data": "#!/bin/bash\necho 'root:${var.ecs_password}'|chpasswd\nwget -P /tmp/ https://documentation-samples-4.obs.myhuaweicloud.ap-southeast-3.com/solution-as-code-moudle/deploy-a-highly-available-mongodb/userdata/install_secondary_db02.sh\nchmod 744 /tmp/install_secondary_db02.sh\nsh /tmp/install_secondary_db02.sh ${var.mongodb_password} ${var.ecs_password}\nrm -rf /tmp/install_secondary_db02.sh"
+            },
+            "primary": {
+                "depends_on": [
+                    "huaweicloud_compute_instance.secondary01",
+                    "huaweicloud_compute_instance.secondary02"
+                ],
+                "name": "${var.ecs_name}_primary",
+                "image_id": "${data.huaweicloud_images_image.CentOS.id}",
+                "flavor_id": "${var.ecs_flavor}",
+                "security_group_ids": [
+                    "${huaweicloud_networking_secgroup.secgroup.id}"
+                ],
+                "availability_zone": "${data.huaweicloud_availability_zones.availability_zones.names[2]}",
+                "system_disk_type": "SAS",
+                "system_disk_size": "${var.system_disk_size}",
+                "charging_mode": "${var.charging_mode}",
+                "period_unit": "${var.charging_unit}",
+                "period": "${var.charging_period}",
+                "admin_pass": "${var.ecs_password}",
+                "data_disks": {
+                    "size": "${var.data_disk_size}",
+                    "type": "GPSSD"
+                },
+                "delete_disks_on_termination": true,
+                "network": {
+                    "fixed_ip_v4": "172.16.0.12",
+                    "uuid": "${huaweicloud_vpc_subnet.subnet.id}"
+                },
+                "user_data": "#!/bin/bash\necho 'root:${var.ecs_password}'|chpasswd\nwget -P /tmp/ https://documentation-samples-4.obs.ap-southeast-3.myhuaweicloud.com/solution-as-code-moudle/deploy-a-highly-available-mongodb/userdata/install_primary_db.sh\nchmod 744 /tmp/install_primary_db.sh\nsh /tmp/install_primary_db.sh ${var.mongodb_password} ${var.ecs_password}\nrm -rf /tmp/install_primary_db.sh"
+            }
+        },
+        "huaweicloud_vpc_eip": {
+            "myeip": {
+                "bandwidth": {
+                    "charge_mode": "bandwidth",
+                    "name": "${var.ecs_name}_eip",
+                    "share_type": "PER",
+                    "size": "${var.eip_bandwidth_size}"
+                },
+                "charging_mode": "${var.charging_mode}",
+                "period_unit": "${var.charging_unit}",
+                "period": "${var.charging_period}",
+                "publicip": {
+                    "type": "5_bgp"
+                }
+            }
+        },
+        "huaweicloud_nat_gateway": {
+            "nat": {
+                "name": "${var.ecs_name}_nat",
+                "description": "test for terraform",
+                "spec": "1",
+                "vpc_id": "${huaweicloud_vpc.vpc.id}",
+                "subnet_id": "${huaweicloud_vpc_subnet.subnet.id}"
+            }
+        },
+        "huaweicloud_nat_snat_rule": {
+            "snat_1": {
+                "nat_gateway_id": "${huaweicloud_nat_gateway.nat.id}",
+                "floating_ip_id": "${huaweicloud_vpc_eip.myeip.id}",
+                "subnet_id": "${huaweicloud_vpc_subnet.subnet.id}"
+            }
+        }
+    },
+    "output": {
+        "Verifying MongoDB": {
+            "value": "After the template is deployed, verify that the MongoDB database is running normally by referring to the Deployment Guide."
+        }
+    }
+}
